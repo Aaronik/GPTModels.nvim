@@ -34,6 +34,8 @@ local on_CR = function(input_bufnr, chat_bufnr)
   Store.chat.chat.append({ role = "user", content = input_text })
   render_buffer_from_messages(chat_bufnr, Store.chat.chat.read())
 
+  -- local current_buf = vim.api.nvim_get_current_buf()
+
   local jorb = llm.chat({
     llm = {
       stream = true,

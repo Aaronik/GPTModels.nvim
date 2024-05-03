@@ -6,6 +6,12 @@ local assert = require("luassert")
 
 describe("Store | setting / getting", function()
   before_each(function()
+    Store.init()
+    Store.chat.clear()
+    Store.edit.clear()
+  end)
+
+  after_each(function ()
     Store.chat.clear()
     Store.edit.clear()
   end)
@@ -30,6 +36,23 @@ describe("Store | setting / getting", function()
 
     assert.equal("inputinput", Store.chat.input.read())
     assert.same({{ role = "assistant", content = "chatchat" }}, Store.chat.chat.read())
+  end)
+
+  it("saves to a file", function()
+    Store.edit.right.append("right")
+    Store.edit.left.append("left")
+    Store.edit.input.append("input")
+    Store.chat.input.append("input")
+    Store.chat.chat.append({ role = "assistant", content = "chat" })
+
+    -- simulate closing and reopening nvim
+    Store = util.R('gpt.store')
+
+    assert.equal("right", Store.edit.right.read())
+    assert.equal("left", Store.edit.left.read())
+    assert.equal("input", Store.edit.input.read())
+    assert.equal("input", Store.chat.input.read())
+    assert.same({{ role = "assistant", content = "chat" }}, Store.chat.chat.read())
   end)
 end)
 
@@ -92,6 +115,11 @@ end)
 describe("Store | jobs", function()
   before_each(function()
     Store.clear_job()
+  end)
+
+  after_each(function ()
+    Store.chat.clear()
+    Store.edit.clear()
   end)
 
   it("takes one job", function()
