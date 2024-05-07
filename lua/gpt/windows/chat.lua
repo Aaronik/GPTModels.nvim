@@ -9,7 +9,8 @@ local M = {}
 
 ---@param bufnr integer
 ---@param messages LlmMessage[]
-local render_buffer_from_messages = function(bufnr, messages)
+local render_buffer_from_messages = function(bufnr)
+  local messages = Store.chat.chat.read()
   local lines = {}
   for _, message in ipairs(messages) do
     local message_content = vim.split(message.content, "\n")
@@ -32,7 +33,7 @@ local on_CR = function(input_bufnr, chat_bufnr)
   vim.api.nvim_buf_set_lines(input_bufnr, 0, -1, true, {})
 
   Store.chat.chat.append({ role = "user", content = input_text })
-  render_buffer_from_messages(chat_bufnr, Store.chat.chat.read())
+  render_buffer_from_messages(chat_bufnr)
 
   -- local current_buf = vim.api.nvim_get_current_buf()
 
@@ -44,7 +45,7 @@ local on_CR = function(input_bufnr, chat_bufnr)
     },
     on_read = function(_, message)
       Store.chat.chat.append(message)
-      render_buffer_from_messages(chat_bufnr, Store.chat.chat.read())
+      render_buffer_from_messages(chat_bufnr)
     end,
     on_end = function()
       Store.clear_job()
@@ -76,6 +77,11 @@ local function on_q(layout)
   layout:unmount()
 end
 
+local function on_ctl_n(chat_bufnr)
+  Store.chat.clear()
+  render_buffer_from_messages(chat_bufnr)
+end
+
 ---@return { input_bufnr: integer, chat_bufnr: integer }
 function M.build_and_mount()
   local chat = Popup(com.build_common_popup_opts("Chat"))
@@ -89,7 +95,7 @@ function M.build_and_mount()
   vim.api.nvim_buf_set_option(input.bufnr, "buftype", "nofile")
 
   -- If there's a chat history, open with that.
-  render_buffer_from_messages(chat.bufnr, Store.chat.chat.read())
+  render_buffer_from_messages(chat.bufnr)
 
   vim.api.nvim_buf_set_keymap(
     input.bufnr,
@@ -142,6 +148,13 @@ function M.build_and_mount()
       noremap = true,
       silent = true,
       callback = function() on_q(layout) end,
+    })
+
+    -- ctl-n clears the chat
+    vim.api.nvim_buf_set_keymap(buf, "n", "<C-n>", "", {
+      noremap = true,
+      silent = true,
+      callback = function() on_ctl_n(chat.bufnr) end,
     })
 
     -- vim.api.nvim_create_autocmd("BufLeave", {

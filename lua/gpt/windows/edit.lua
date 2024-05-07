@@ -49,6 +49,11 @@ local function on_q(layout)
   layout:unmount()
 end
 
+local function on_ctl_n(right_bufnr)
+  Store.edit.clear()
+  render_buffer_from_text(right_bufnr)
+end
+
 function M.build_and_mount(selected_text)
   local left_popup = Popup(com.build_common_popup_opts("Current"))
   local right_popup = Popup(com.build_common_popup_opts("Edits"))
@@ -124,6 +129,13 @@ function M.build_and_mount(selected_text)
       noremap = true,
       silent = true,
       callback = function() on_q(layout) end,
+    })
+
+    -- ctl-n clears the session
+    vim.api.nvim_buf_set_keymap(buf, "n", "<C-n>", "", {
+      noremap = true,
+      silent = true,
+      callback = function() on_ctl_n(right_popup.bufnr) end,
     })
   end
 

@@ -4,6 +4,8 @@ require('gpt.types')
 
 local M = {}
 
+-- TODO add a sync option, replace everywhere that's doig vim.wait for job.done()
+
 -- Execute a command a la on the command line
 ---@param args ExecArgs
 ---@return Job

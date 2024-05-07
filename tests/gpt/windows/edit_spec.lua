@@ -6,15 +6,21 @@ local edit_window = require('gpt.windows.edit')
 local stub = require('luassert.stub')
 local llm = require('gpt.llm')
 local cmd = require('gpt.cmd')
-local pj = require('plenary.job')
+local Store = require('gpt.store')
 
 describe("The Edit window", function()
   before_each(function()
+    Store.clean()
+
     -- Set current window dims, otherwise it defaults to 0 and nui.layout complains about not having a pos integer height
     vim.api.nvim_win_set_height(0, 100)
     vim.api.nvim_win_set_width(0, 100)
 
     stub(cmd, "exec")
+  end)
+
+  after_each(function ()
+    Store.clean()
   end)
 
   it("returns buffer numbers", function()
@@ -127,5 +133,39 @@ describe("The Edit window", function()
     vim.api.nvim_feedkeys(keys, 'mtx', false)
 
     assert.is_true(die_called)
+  end)
+
+  it("clears everything on ctl-n", function()
+    Store.edit.clear()
+
+    local bufs = edit_window.build_and_mount()
+    local input_bufnr = bufs.input_bufnr
+    local left_bufnr = bufs.left_bufnr
+    local right_bufnr = bufs.right_bufnr
+
+    -- stub llm call
+    local s = stub(llm, "generate")
+
+    -- make call to llm stub
+    local keys = vim.api.nvim_replace_termcodes('inothindoin<Esc><CR>', true, true, true)
+    vim.api.nvim_feedkeys(keys, 'mtx', false)
+
+    ---@type MakeGenerateRequestArgs
+    local args = s.calls[1].refs[1]
+
+    args.on_read(nil, "clear edit window on ctl-n")
+
+    local right_lines = vim.api.nvim_buf_get_lines(right_bufnr, 0, -1, true)
+
+    -- at this point, we have lines
+    assert.same("clear edit window on ctl-n", right_lines[1])
+
+    -- hit ctl-n
+    keys = vim.api.nvim_replace_termcodes('<C-n>', true, true, true)
+    vim.api.nvim_feedkeys(keys, 'mtx', false)
+
+    -- Now they're gone
+    right_lines = vim.api.nvim_buf_get_lines(right_bufnr, 0, -1, true)
+    assert.same("", right_lines[1])
   end)
 end)

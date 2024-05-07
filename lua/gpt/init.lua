@@ -1,6 +1,7 @@
 local util = require('gpt.util')
 local edit_window = require("gpt.windows.edit")
 local chat_window = require("gpt.windows.chat")
+local Store = require("gpt.store")
 
 local M = {}
 
@@ -9,6 +10,7 @@ local M = {}
 local config = {}
 M.config = config
 M.setup = function(args)
+  Store.init()
   M.config = vim.tbl_deep_extend("force", M.config, args or {})
 end
 
@@ -16,6 +18,9 @@ end
 ---@param opts { visual_mode: boolean }
 ---@see file plugin/init.lua
 M.run = function(opts)
+  -- TODO remove from here
+  Store.init()
+
   if opts.visual_mode then
     local selected_text = util.get_visual_selection().text
     edit_window.build_and_mount(selected_text)

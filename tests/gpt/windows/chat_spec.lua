@@ -8,16 +8,16 @@ local assert = require("luassert")
 local chat_window = require('gpt.windows.chat')
 local stub = require('luassert.stub')
 local llm = require('gpt.llm')
-    local cmd = require('gpt.cmd')
+local cmd = require('gpt.cmd')
+local Store = require('gpt.store')
 
 describe("The Chat window", function()
   before_each(function()
+    Store.clean()
+
     -- Set current window dims, otherwise it defaults to 0 and nui.layout complains about not having a pos integer height
     vim.api.nvim_win_set_height(0, 100)
     vim.api.nvim_win_set_width(0, 100)
-
-    -- clear cmd history, lest it get remembered and bleed across tests
-    vim.fn.histdel('cmd')
 
     -- stubbing cmd.exec prevents the llm call from happening
     stub(cmd, "exec")
@@ -171,5 +171,33 @@ describe("The Chat window", function()
     assert.is_true(contains_hello)
     assert.is_true(contains_1)
     assert.is_true(contains_2)
+  end)
+
+  it("creates a new chat on ctl-n", function()
+    local bufs = chat_window.build_and_mount()
+    local input_bufnr = bufs.input_bufnr
+    local chat_bufnr = bufs.chat_bufnr
+
+    -- stub llm call
+    stub(llm, "chat")
+
+    vim.api.nvim_buf_set_lines(input_bufnr, 0, -1, true, { "create new chat on ctl-n" })
+
+    -- make call to llm stub
+    local keys = vim.api.nvim_replace_termcodes('<CR>', true, true, true)
+    vim.api.nvim_feedkeys(keys, 'mtx', false)
+
+    local chat_lines = vim.api.nvim_buf_get_lines(chat_bufnr, 0, -1, true)
+
+    -- at this point, we have lines
+    assert.same("create new chat on ctl-n", chat_lines[1])
+
+    -- hit ctl-n
+    keys = vim.api.nvim_replace_termcodes('<C-n>', true, true, true)
+    vim.api.nvim_feedkeys(keys, 'mtx', false)
+
+    -- Now they're gone
+    chat_lines = vim.api.nvim_buf_get_lines(chat_bufnr, 0, -1, true)
+    assert.same("", chat_lines[1])
   end)
 end)

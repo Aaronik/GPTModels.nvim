@@ -1,6 +1,9 @@
 local cmd = require('gpt.cmd')
 local util = require('gpt.util')
 
+local path = vim.fn.stdpath('cache')
+local data_dir = path .. "/GPT.nvim"
+
 -- Mutates chat
 ---@param chat LlmMessage[]
 ---@param message LlmMessage
@@ -28,12 +31,15 @@ end
 ---@param file_path string
 local function ensure_file(file_path)
   if not vim.fn.filereadable(file_path) then
-    local f, err = io.open(file_path, "w+")
-    if f then
-      f:close()
-    else
-      error("GPT.nvim encountered error creating save file: " .. file_path .. ": " .. err)
-    end
+    local f, _ = io.open(file_path, "w+")
+    if f then return f:close() end
+
+    local job = cmd.exec({
+      cmd = "touch",
+      args = { file_path }
+    })
+
+    vim.wait(500, function () return job.done() end)
   end
 end
 
@@ -59,22 +65,13 @@ local file_mapping = {
   chat_chat = "/chat_chat",
 }
 
--- TODO This can be like the others, append_chat(message)
-
 -- Appends given chat messages to the file on disk.
 -- This is the only one that's not just writing text, so it lives on its own.
 ---@param messages LlmMessage[]
 local function write_chat(messages)
-  util.log('--messages--')
-  util.log(messages)
-
-  local path = vim.fn.stdpath('cache')
-  local data_dir = path .. "/GPT.nvim"
   local file_path = data_dir .. file_mapping["chat_chat"]
 
   local json = vim.fn.json_encode(messages)
-  util.log('--json--')
-  util.log(json)
 
   -- S means no file writes with "fsync", which means writes are faster, but wait in OS buffers to write
   vim.fn.writefile({ json }, file_path, "S")
@@ -82,17 +79,11 @@ end
 
 ---@return LlmMessage[]
 local function read_chat()
-  local path = vim.fn.stdpath('cache')
-  local data_dir = path .. "/GPT.nvim"
   local file_path = data_dir .. file_mapping["chat_chat"]
   local existing_contents = vim.fn.readfile(file_path)
 
-  ---@type boolean, LlmMessage[]
+  ---@type boolean, any
   local status_ok, content = pcall(vim.fn.json_decode, existing_contents)
-
-  util.log('--read content from file:--')
-  util.log(status_ok)
-  util.log(content)
 
   if not status_ok or not content then
     content = {}
@@ -110,8 +101,6 @@ end
 ---@param id "edit_right" | "edit_left" | "edit_input" | "chat_input"
 ---@param data string
 local function append_to(id, data)
-  local path = vim.fn.stdpath('cache')
-  local data_dir = path .. "/GPT.nvim"
   local file_path = data_dir .. file_mapping[id]
 
   local existing_contents = vim.fn.readfile(file_path)
@@ -122,32 +111,51 @@ local function append_to(id, data)
 end
 
 ---@param id "edit_right" | "edit_left" | "edit_input" | "chat_input" | "chat_chat"
+---@return string
 local function read_from(id)
-  local path = vim.fn.stdpath('cache')
-  local data_dir = path .. "/GPT.nvim"
   local file_path = data_dir .. file_mapping[id]
   local existing_contents = vim.fn.readfile(file_path)
   return existing_contents[1]
 end
 
----@param id "edit_right" | "edit_left" | "edit_input" | "chat_input" | "chat_chat"
+---@param id "edit_right" | "edit_left" | "edit_input" | "chat_input"
 local function clear(id)
-  local path = vim.fn.stdpath('cache')
-  local data_dir = path .. "/GPT.nvim"
   local file_path = data_dir .. file_mapping[id]
-  vim.fn.writefile({ "" }, file_path)
+  vim.fn.writefile({ "" }, file_path, "S")
 end
 
 local Store = {}
 Store = {
   -- initialize the save files if they don't exist
   init = function()
-    local path = vim.fn.stdpath('cache')
-    local data_dir = path .. "/GPT.nvim"
     ensure_dir(data_dir)
     for _, file_path in pairs(file_mapping) do
-      ensure_file(file_path)
+      ensure_file(data_dir .. file_path)
     end
+  end,
+
+  -- synchronously clears all store values. Useful mostly for testing
+  clean = function()
+    Store.chat.clear()
+    Store.edit.clear()
+    Store.clear_job()
+
+    local job = cmd.exec({
+      cmd = "rm",
+      args = { "-rf", data_dir },
+    })
+
+    vim.wait(500, function() return job.done() end)
+
+    Store.init()
+
+    vim.wait(500, function()
+      return Store.chat.chat.read() == {}
+          and Store.chat.input.read() == ""
+          and Store.edit.right.read() == ""
+          and Store.edit.left.read() == ""
+          and Store.edit.input.read() == ""
+    end)
   end,
 
   edit = {
