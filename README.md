@@ -91,6 +91,7 @@ them here. But here they are anyways:
 
 This plugin requires `curl` be installed for requests.
 For Ollama requests, have [Ollama](https://ollama.com/) running locally.
+To use a remote Ollama server, set `vim.g.gptmodels_ollama_host` to the server's URL (e.g., `http://remote-host:11434`).
 For OpenAI requests, have the `OPENAI_API_KEY` environment variable set.
 
 Now, in your favorite package manager:

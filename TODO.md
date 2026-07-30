@@ -3,7 +3,6 @@
 * Make sure o1 models are available
 * Let some ops, like attach files, work in insert mode as well
 * Let <CR> work from all windows
-* Offer some config for ollama location
 * chat window's prompt needs to be adjusted so the user request counts as much as the included files,
   currently it's dominated by the files and many llms end up just explaining what's in the files
 * Get live reloading of C-p telescope model picker when openai results come in
