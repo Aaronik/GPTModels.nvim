@@ -53,7 +53,7 @@ Two main interfaces built on NUI.nvim:
 - **Type System**: Extensive Lua type annotations in `types.lua` for IDE support
 - **Zero Config**: Works out of the box, optional setup in user config
 - **Dependencies**: Requires `nui.nvim`, `telescope.nvim`, and `curl`
-- **Environment**: Set `OPENAI_API_KEY` for OpenAI, requires local Ollama server for Ollama provider
+- **Environment**: Set `OPENAI_API_KEY` for OpenAI, requires Ollama server for Ollama provider (configurable via `vim.g.gptmodels_ollama_host`)
 - **Visual Selection**: Commands automatically detect and handle visual mode selections
 - **Background Processing**: Windows can close while maintaining streaming responses
 
